@@ -13,7 +13,7 @@ class Publisher extends Command
      *
      * @var string
      */
-    protected $signature = 'rabbit:publish';
+    protected $signature = 'rabbit:publish {message}';
 
     /**
      * The console command description.
@@ -44,10 +44,19 @@ class Publisher extends Command
 
         $channel->queue_declare('task_queue', false, true, false, false);
 
-        $msg = new AMQPMessage('Hello World!', ['delivery_mode' => AMQPMessage::DELIVERY_MODE_PERSISTENT]);
-        $channel->basic_publish($msg, '', 'hello');
+        $data = $this->argument('message');
+        if (empty($data)) {
+            $data = "Hello World!";
+        }
 
-        echo " [x] Sent 'Hello World!'\n";
+        $msg = new AMQPMessage(
+            $data,
+            ['delivery_mode' => AMQPMessage::DELIVERY_MODE_PERSISTENT]
+        );
+
+        $channel->basic_publish($msg, '', 'task_queue');
+
+        echo " [x] Sent $data" . PHP_EOL;
 
         $channel->close();
         $connection->close();

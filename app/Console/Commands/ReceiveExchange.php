@@ -5,14 +5,14 @@ namespace App\Console\Commands;
 use Illuminate\Console\Command;
 use PhpAmqpLib\Connection\AMQPStreamConnection;
 
-class Receive extends Command
+class ReceiveExchange extends Command
 {
     /**
      * The name and signature of the console command.
      *
      * @var string
      */
-    protected $signature = 'rabbit:receive';
+    protected $signature = 'rabbit:receiveexchange';
 
     /**
      * The console command description.
@@ -41,19 +41,19 @@ class Receive extends Command
         $connection = new AMQPStreamConnection('localhost', 5672, 'guest', 'guest');
         $channel = $connection->channel();
 
-        $channel->queue_declare('task_queue', false, true, false, false);
+        $channel->exchange_declare('logs', 'fanout', false, false, false);
 
-        echo ' [*] Waiting for messages. To exit press CTRL+C' . PHP_EOL;
+        list($queue_name, ,) = $channel->queue_declare("", false, false, true, false);
+
+        $channel->queue_bind($queue_name, 'logs');
+
+        echo ' [*] Waiting for logs. To exit press CTRL+C' . PHP_EOL;
 
         $callback = function ($msg) {
-            echo " [x] Received {$msg->body} " . PHP_EOL;
-            sleep(substr_count($msg->body, '.'));
-            echo " [x] Done" . PHP_EOL;
-            $msg->delivery_info['channel']->basic_ack($msg->delivery_info['delivery_tag']);
+            echo " [x] , $msg->body, " . PHP_EOL;
         };
 
-        $channel->basic_qos(null, 1, null);
-        $channel->basic_consume('task_queue', '', false, false, false, false, $callback);
+        $channel->basic_consume($queue_name, '', false, true, false, false, $callback);
 
         while ($channel->is_consuming()) {
             $channel->wait();
