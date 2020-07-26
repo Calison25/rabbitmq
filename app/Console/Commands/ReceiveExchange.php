@@ -12,7 +12,7 @@ class ReceiveExchange extends Command
      *
      * @var string
      */
-    protected $signature = 'rabbit:receiveexchange';
+    protected $signature = 'rabbit:receiveexchange {--topics=*}';
 
     /**
      * The console command description.
@@ -41,16 +41,20 @@ class ReceiveExchange extends Command
         $connection = new AMQPStreamConnection('localhost', 5672, 'guest', 'guest');
         $channel = $connection->channel();
 
-        $channel->exchange_declare('logs', 'fanout', false, false, false);
+        $channel->exchange_declare('topic_logs', 'topic', false, false, false);
 
         list($queue_name, ,) = $channel->queue_declare("", false, false, true, false);
 
-        $channel->queue_bind($queue_name, 'logs');
+        $binding_keys = $this->option('topics');
+
+        foreach ($binding_keys as $binding_key) {
+            $channel->queue_bind($queue_name, 'topic_logs', $binding_key);
+        }
 
         echo ' [*] Waiting for logs. To exit press CTRL+C' . PHP_EOL;
 
         $callback = function ($msg) {
-            echo " [x] , $msg->body, " . PHP_EOL;
+            echo ' [x] ', $msg->delivery_info['routing_key'], ':', $msg->body . PHP_EOL;
         };
 
         $channel->basic_consume($queue_name, '', false, true, false, false, $callback);

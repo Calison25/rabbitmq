@@ -13,7 +13,7 @@ class Exchange extends Command
      *
      * @var string
      */
-    protected $signature = 'rabbit:exchange {message}';
+    protected $signature = 'rabbit:exchange {message} {topic=anonymous.info}';
 
     /**
      * The console command description.
@@ -42,8 +42,7 @@ class Exchange extends Command
         $connection = new AMQPStreamConnection('localhost', 5672, 'guest', 'guest');
         $channel = $connection->channel();
 
-        $channel->exchange_declare('logs', 'fanout', false, false, false);
-
+        $channel->exchange_declare('topic_logs', 'topic', false, false, false);
         $data = $this->argument('message');
         if (empty($data)) {
             $data = "Hello World!";
@@ -53,8 +52,8 @@ class Exchange extends Command
             $data,
             ['delivery_mode' => AMQPMessage::DELIVERY_MODE_PERSISTENT]
         );
-
-        $channel->basic_publish($msg, 'logs');
+        $rounting_key = $this->argument('topic');
+        $channel->basic_publish($msg, 'topic_logs', $rounting_key);
 
         echo " [x] Sent $data" . PHP_EOL;
 
