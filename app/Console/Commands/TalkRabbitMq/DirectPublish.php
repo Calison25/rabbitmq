@@ -42,7 +42,7 @@ class DirectPublish extends Command
 
         $exchangeName = 'direct_teste';
         $exchangeType = 'direct';
-        $queueName = 'basic_queue';
+        $queueName = 'direct_queue';
         $routingKey = 'direct_routing_key';
         $channel->exchange_declare($exchangeName, $exchangeType, false, true, false);
         $channel->queue_declare($queueName, false, true, false, false);
