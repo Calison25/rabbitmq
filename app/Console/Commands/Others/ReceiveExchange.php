@@ -1,19 +1,18 @@
 <?php
 
-namespace App\Console\Commands;
+namespace App\Console\Commands\Others;
 
 use Illuminate\Console\Command;
 use PhpAmqpLib\Connection\AMQPStreamConnection;
-use PhpAmqpLib\Message\AMQPMessage;
 
-class Exchange extends Command
+class ReceiveExchange extends Command
 {
     /**
      * The name and signature of the console command.
      *
      * @var string
      */
-    protected $signature = 'rabbit:exchange {message} {topic=anonymous.info}';
+    protected $signature = 'rabbit:receiveexchange {--topics=*}';
 
     /**
      * The console command description.
@@ -43,19 +42,26 @@ class Exchange extends Command
         $channel = $connection->channel();
 
         $channel->exchange_declare('topic_logs', 'topic', false, false, false);
-        $data = $this->argument('message');
-        if (empty($data)) {
-            $data = "Hello World!";
+
+        list($queue_name, ,) = $channel->queue_declare("", false, false, true, false);
+
+        $binding_keys = $this->option('topics');
+
+        foreach ($binding_keys as $binding_key) {
+            $channel->queue_bind($queue_name, 'topic_logs', $binding_key);
         }
 
-        $msg = new AMQPMessage(
-            $data,
-            ['delivery_mode' => AMQPMessage::DELIVERY_MODE_PERSISTENT]
-        );
-        $rounting_key = $this->argument('topic');
-        $channel->basic_publish($msg, 'topic_logs', $rounting_key);
+        echo ' [*] Waiting for logs. To exit press CTRL+C' . PHP_EOL;
 
-        echo " [x] Sent $data" . PHP_EOL;
+        $callback = function ($msg) {
+            echo ' [x] ', $msg->delivery_info['routing_key'], ':', $msg->body . PHP_EOL;
+        };
+
+        $channel->basic_consume($queue_name, '', false, true, false, false, $callback);
+
+        while ($channel->is_consuming()) {
+            $channel->wait();
+        }
 
         $channel->close();
         $connection->close();

@@ -8,16 +8,14 @@ services:
       - ./:/var/www/html
       - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf
     networks:
-      - rabbit_mq_tutorial
+      - rabbitmq
   rabbit:
-    image: rabbitmq:latest
-    volumes:
-      - ./docker/rabbitmq/enabled_plugins:/etc/rabbitmq/enabled_plugins
+    image: rabbitmq:3.6.10-management
     ports:
       - "15672:15672"
       - "5672:5672"
     networks:
-      - rabbit_mq_tutorial
+      - rabbitmq
   php:
     build:
       context: .
@@ -25,7 +23,7 @@ services:
     volumes:
       - ./:/var/www/html
     networks:
-      - rabbit_mq_tutorial
+      - rabbitmq
     depends_on:
       - web
       - database
@@ -40,10 +38,10 @@ services:
       - ./docker/mysql:/etc/mysql/conf.d
       - rabbitmqphp_data:/var/lib/mysql
     networks:
-      - rabbit_mq_tutorial
+      - rabbitmq
 networks:
-  rabbit_mq_tutorial:
-    name: rabbit_mq_tutorial
+  rabbitmq:
+    name: rabbitmq
     driver: bridge
 
 volumes:

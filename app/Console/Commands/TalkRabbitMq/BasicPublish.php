@@ -1,18 +1,19 @@
 <?php
 
-namespace App\Console\Commands;
+namespace App\Console\Commands\TalkRabbitMq;
 
 use Illuminate\Console\Command;
 use PhpAmqpLib\Connection\AMQPStreamConnection;
+use PhpAmqpLib\Message\AMQPMessage;
 
-class Receive extends Command
+class BasicPublish extends Command
 {
     /**
      * The name and signature of the console command.
      *
      * @var string
      */
-    protected $signature = 'rabbit:receive';
+    protected $signature = 'rabbit:basic_publish';
 
     /**
      * The console command description.
@@ -41,23 +42,15 @@ class Receive extends Command
         $connection = new AMQPStreamConnection('localhost', 5672, 'guest', 'guest');
         $channel = $connection->channel();
 
-        $channel->queue_declare('task_queue', false, true, false, false);
+        $queueName = 'hello';
+        $routingKey = 'hello';
+        $channel->queue_declare($queueName, false, true, false, false);
 
-        echo ' [*] Waiting for messages. To exit press CTRL+C' . PHP_EOL;
+        $messageBody = 'Hello World!';
+        $message = new AMQPMessage($messageBody, ['delivery_mode' => AMQPMessage::DELIVERY_MODE_PERSISTENT]);
+        $channel->basic_publish($message, '', $routingKey);
 
-        $callback = function ($msg) {
-            echo " [x] Received {$msg->body} " . PHP_EOL;
-            sleep(substr_count($msg->body, '.'));
-            echo " [x] Done" . PHP_EOL;
-            $msg->delivery_info['channel']->basic_ack($msg->delivery_info['delivery_tag']);
-        };
-
-        $channel->basic_qos(null, 1, null);
-        $channel->basic_consume('task_queue', '', false, false, false, false, $callback);
-
-        while ($channel->is_consuming()) {
-            $channel->wait();
-        }
+        echo "[x] Sent $messageBody" . PHP_EOL;
 
         $channel->close();
         $connection->close();

@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Console\Commands;
+namespace App\Console\Commands\Others;
 
 use App\FibonacciRpcClient;
 use Illuminate\Console\Command;

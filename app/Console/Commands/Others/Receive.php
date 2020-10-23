@@ -1,18 +1,18 @@
 <?php
 
-namespace App\Console\Commands;
+namespace App\Console\Commands\Others;
 
 use Illuminate\Console\Command;
 use PhpAmqpLib\Connection\AMQPStreamConnection;
 
-class ReceiveExchange extends Command
+class Receive extends Command
 {
     /**
      * The name and signature of the console command.
      *
      * @var string
      */
-    protected $signature = 'rabbit:receiveexchange {--topics=*}';
+    protected $signature = 'rabbit:receive';
 
     /**
      * The console command description.
@@ -41,23 +41,19 @@ class ReceiveExchange extends Command
         $connection = new AMQPStreamConnection('localhost', 5672, 'guest', 'guest');
         $channel = $connection->channel();
 
-        $channel->exchange_declare('topic_logs', 'topic', false, false, false);
+        $channel->queue_declare('hello', false, true, false, false);
 
-        list($queue_name, ,) = $channel->queue_declare("", false, false, true, false);
-
-        $binding_keys = $this->option('topics');
-
-        foreach ($binding_keys as $binding_key) {
-            $channel->queue_bind($queue_name, 'topic_logs', $binding_key);
-        }
-
-        echo ' [*] Waiting for logs. To exit press CTRL+C' . PHP_EOL;
+        echo ' [*] Waiting for messages. To exit press CTRL+C' . PHP_EOL;
 
         $callback = function ($msg) {
-            echo ' [x] ', $msg->delivery_info['routing_key'], ':', $msg->body . PHP_EOL;
+            echo " [x] Received {$msg->body} " . PHP_EOL;
+            sleep(substr_count($msg->body, '.'));
+            echo " [x] Done" . PHP_EOL;
+            $msg->delivery_info['channel']->basic_ack($msg->delivery_info['delivery_tag']);
         };
 
-        $channel->basic_consume($queue_name, '', false, true, false, false, $callback);
+        $channel->basic_qos(null, 1, null);
+        $channel->basic_consume('hello', '', false, false, false, false, $callback);
 
         while ($channel->is_consuming()) {
             $channel->wait();
